@@ -1,15 +1,17 @@
-# ClawSoul 觉醒流程模块 - V4：纯本地 MBTI 分析
+# ClawSoul 觉醒流程模块 - V3：AI 答题优先，本地分析备选，随机兜底
 
 """
-V4 逻辑（纯本地）：
+V3 逻辑：
   AI 自我觉醒
-    → 优先：本地 MBTI 数据库分析
+    → 优先：AI 答题（有 LLM）
+    → 备选：本地分析
     → 兜底：随机
 """
 
 import random
 import sys
 from pathlib import Path
+from typing import Optional
 
 Skill_root = Path(__file__).resolve().parent.parent
 if str(Skill_root) not in sys.path:
@@ -44,16 +46,31 @@ MBTI_NICKNAMES = {
 }
 
 
-def _local_analyze_ai_personality() -> str:
-    """本地分析 AI 人格，返回最匹配的 MBTI"""
+def _has_llm() -> bool:
+    """是否可用 LLM（轻量检查，不一定要真正跑完 MBTI 题）"""
+    try:
+        from lib.llm_client import get_llm_client
+        return get_llm_client().is_available()
+    except Exception:
+        return False
+
+
+def _llm_take_mbti_test() -> Optional[str]:
+    """让 AI 通过 LLM 做 MBTI 自我认知，成功返回 4 字母，否则 None"""
+    try:
+        from lib.llm_client import get_llm_client
+        return get_llm_client().take_mbti_self_test()
+    except Exception:
+        return None
+
+
+def _local_analyze_ai_personality() -> Optional[str]:
+    """本地分析 AI 人格（无 LLM），返回最匹配的 MBTI 或 None"""
     try:
         from lib.ai_personality import local_analyze_ai_personality as analyze
-        result = analyze()
-        if result:
-            return result
+        return analyze()
     except Exception:
-        pass
-    return _random_mbti()
+        return None
 
 
 def _random_mbti() -> str:
@@ -78,22 +95,28 @@ def format_awaken_message(mbti: str) -> str:
 
 def run_awaken_flow() -> dict:
     """
-    V4 觉醒流程（纯本地）：
-    1. 本地分析 AI 人格（MBTI 数据库匹配）
-    2. 失败则随机兜底
+    V3 觉醒流程：
+    1. 优先尝试 AI 答题（LLM）
+    2. 失败则本地分析 AI 人格
+    3. 再失败则随机兜底
     Returns:
         dict: {success, mbti, message, error, source}
-        source: "local" | "random"
+        source: "llm" | "local" | "random"
     """
     mbti = None
     source = None
     try:
-        # 1. 优先：本地分析
-        mbti = _local_analyze_ai_personality()
-        if mbti:
-            source = "local"
-        
-        # 2. 兜底：随机
+        # 1. 优先：AI 答题（有 LLM）
+        if _has_llm():
+            mbti = _llm_take_mbti_test()
+            if mbti:
+                source = "llm"
+        # 2. 备选：本地分析
+        if not mbti:
+            mbti = _local_analyze_ai_personality()
+            if mbti:
+                source = "local"
+        # 3. 兜底：随机
         if not mbti:
             mbti = _random_mbti()
             source = "random"

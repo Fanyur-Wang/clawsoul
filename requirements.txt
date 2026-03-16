@@ -1,9 +1,4 @@
-# ClawSoul Skill Dependencies
+# ClawSoul Skill - Python 依赖
+# 核心逻辑仅用标准库；以下为可选依赖（LLM 觉醒/分析时使用）
 
-# 海报生成（可选）
-Pillow>=10.0.0
-qrcode>=7.4.0
-
-# LLM 接入（可选）
-openai>=1.0.0
-requests>=2.31.0
+requests>=2.28.0
