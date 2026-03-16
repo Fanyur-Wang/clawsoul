@@ -1,0 +1,9 @@
+# ClawSoul Skill Dependencies
+
+# 海报生成（可选）
+Pillow>=10.0.0
+qrcode>=7.4.0
+
+# LLM 接入（可选）
+openai>=1.0.0
+requests>=2.31.0
